@@ -2,363 +2,1119 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>환경과 생태 쫌 아는 10대 - 3D 농구 퀴즈</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-select=none">
+    <title>1v1 축구 드리블 마스터</title>
     <style>
-        body {
+        * {
+            box-sizing: border-box;
             margin: 0;
+            padding: 0;
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
             overflow: hidden;
-            font-family: 'Malgun Gothic', sans-serif;
-            background-color: #000;
         }
-        #canvas-container {
-            width: 100vw;
-            height: 100vh;
+
+        #game-container {
+            position: relative;
+            width: 900px;
+            height: 650px;
+            background-color: #1e293b;
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(59, 130, 246, 0.2);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
-        #ui-container {
+
+        /* Top HUD Bar */
+        #hud {
+            height: 60px;
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.8) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            z-index: 10;
+        }
+
+        .hud-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .hud-value {
+            color: #38bdf8;
+            font-size: 20px;
+        }
+
+        /* Stamina Bar */
+        .stamina-container {
+            width: 140px;
+            height: 14px;
+            background: #334155;
+            border-radius: 7px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        #stamina-bar {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #eab308, #22c55e);
+            transition: width 0.1s linear;
+        }
+
+        /* Main Canvas */
+        #canvas-wrapper {
+            position: relative;
+            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Floating Combo / Trick Notification */
+        #trick-banner {
             position: absolute;
             top: 20px;
             left: 50%;
-            transform: translateX(-50%);
-            width: 90%;
-            max-width: 600px;
-            background: rgba(255, 255, 255, 0.92);
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            text-align: center;
-            transition: all 0.5s ease;
-        }
-        .chapter {
-            font-size: 14px;
-            color: #2e7d32;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        .question {
-            font-size: 16px;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 15px;
-        }
-        .options {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-        .btn {
-            background: #4caf50;
-            color: white;
-            border: none;
-            padding: 12px;
-            font-size: 14px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .btn:hover {
-            background: #388e3c;
-        }
-        #result-msg {
-            position: absolute;
-            top: 40%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 48px;
+            transform: translateX(-50%) scale(0.8);
+            background: rgba(15, 23, 42, 0.85);
+            border: 2px solid #38bdf8;
+            color: #facc15;
+            font-size: 22px;
             font-weight: 900;
-            color: #fff;
-            text-shadow: 0 0 20px #000;
-            pointer-events: none;
+            padding: 8px 24px;
+            border-radius: 30px;
             opacity: 0;
-            transition: opacity 0.3s;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
+            z-index: 20;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
         }
-        .slow-mo-badge {
+
+        #trick-banner.show {
+            opacity: 1;
+            transform: translateX(-50%) scale(1.1);
+        }
+
+        /* Overlay Screens */
+        .overlay-screen {
             position: absolute;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(255, 0, 0, 0.8);
-            color: white;
-            padding: 8px 20px;
-            border-radius: 20px;
-            font-weight: bold;
-            letter-spacing: 2px;
-            display: none;
-            animation: pulse 1s infinite alternate;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.88);
+            backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 30;
+            padding: 40px;
+            text-align: center;
         }
-        @keyframes pulse {
-            from { opacity: 0.6; }
-            to { opacity: 1; }
+
+        .overlay-screen h1 {
+            font-size: 42px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #38bdf8, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 12px;
+        }
+
+        .overlay-screen p {
+            font-size: 16px;
+            color: #94a3b8;
+            margin-bottom: 24px;
+            max-width: 500px;
+            line-height: 1.6;
+        }
+
+        /* Key Guide Box */
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            background: rgba(30, 41, 59, 0.7);
+            padding: 18px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 28px;
+            text-align: left;
+            width: 100%;
+            max-width: 520px;
+        }
+
+        .control-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            color: #cbd5e1;
+        }
+
+        .key-badge {
+            background: #475569;
+            color: #f8fafc;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 12px;
+            box-shadow: 0 2px 0 #1e293b;
+            border: 1px solid #64748b;
+        }
+
+        /* Buttons */
+        .btn-primary {
+            background: linear-gradient(135deg, #2563eb, #3d82f6);
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: 800;
+            padding: 14px 42px;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.5);
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px -5px rgba(37, 99, 235, 0.7);
+            background: linear-gradient(135deg, #1d4ed8, #2563eb);
+        }
+
+        .btn-primary:active {
+            transform: translateY(1px);
+        }
+
+        /* Mobile Controls */
+        #mobile-controls {
+            display: none;
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            padding: 0 20px;
+            justify-content: space-between;
+            align-items: flex-end;
+            z-index: 25;
+            pointer-events: none;
+        }
+
+        @media (max-width: 920px) {
+            #game-container {
+                width: 100vw;
+                height: 100vh;
+                border-radius: 0;
+            }
+            #mobile-controls {
+                display: flex;
+            }
+        }
+
+        .touch-btn-group {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        .touch-btn {
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            background: rgba(30, 41, 59, 0.75);
+            border: 2px solid rgba(255,255,255,0.2);
+            color: #fff;
+            font-weight: 800;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+            touch-action: manipulation;
+        }
+
+        .touch-btn:active {
+            background: #3b82f6;
+            transform: scale(0.95);
+        }
+
+        /* Joystick */
+        #joystick-zone {
+            width: 120px;
+            height: 120px;
+            background: rgba(30, 41, 59, 0.5);
+            border: 2px solid rgba(255,255,255,0.15);
+            border-radius: 50%;
+            position: relative;
+            pointer-events: auto;
+            touch-action: none;
+        }
+
+        #joystick-knob {
+            width: 50px;
+            height: 50px;
+            background: #38bdf8;
+            border-radius: 50%;
+            position: absolute;
+            top: 35px;
+            left: 35px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
     </style>
-    <!-- Three.js 라이브러리 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-    <div id="canvas-container"></div>
+    <div id="game-container">
+        <!-- HUD -->
+        <div id="hud">
+            <div class="hud-item">
+                STAGE <span id="stage-val" class="hud-value">1</span>
+            </div>
+            <div class="hud-item">
+                점수 <span id="score-val" class="hud-value">0</span>
+            </div>
+            <div class="hud-item">
+                스테미나
+                <div class="stamina-container">
+                    <div id="stamina-bar"></div>
+                </div>
+            </div>
+            <div class="hud-item">
+                남은 시간 <span id="time-val" class="hud-value">45s</span>
+            </div>
+        </div>
 
-    <div id="ui-container">
-        <div id="chapter" class="chapter">1장. 컵라면과 플랜테이션</div>
-        <div id="question" class="question">Q. 열대우림과 오랑우탄 서식지를 파괴하는 컵라면용 기름은?</div>
-        <div id="options" class="options"></div>
+        <!-- Canvas Area -->
+        <div id="canvas-wrapper">
+            <div id="trick-banner">ANKLE BREAKER! +200</div>
+            <canvas id="gameCanvas"></canvas>
+
+            <!-- Touch Controls (Mobile) -->
+            <div id="mobile-controls">
+                <div id="joystick-zone">
+                    <div id="joystick-knob"></div>
+                </div>
+                <div class="touch-btn-group">
+                    <div class="touch-btn" id="btn-crossover">크로스<br>(Z)</div>
+                    <div class="touch-btn" id="btn-spin">루렛<br>(X)</div>
+                    <div class="touch-btn" id="btn-nutmeg">알까기<br>(C)</div>
+                    <div class="touch-btn" id="btn-dash" style="background:rgba(234, 179, 8, 0.4);">대시<br>(Shift)</div>
+                </div>
+            </div>
+
+            <!-- Start Screen -->
+            <div id="start-screen" class="overlay-screen">
+                <h1>1v1 FOOTBALL DRIBBLE</h1>
+                <p>수비수의 수비 방향을 예측하고 절묘한 드리블 스킬로 따돌려 골을 넣으세요!</p>
+
+                <div class="controls-grid">
+                    <div class="control-item">
+                        <span class="key-badge">방향키 / WASD</span> 이동
+                    </div>
+                    <div class="control-item">
+                        <span class="key-badge">Shift / Space</span> 스피드 대시
+                    </div>
+                    <div class="control-item">
+                        <span class="key-badge">Z / J</span> 크로스오버 (수비 무력화)
+                    </div>
+                    <div class="control-item">
+                        <span class="key-badge">X / K</span> 마르세유 턴 (회전 돌파)
+                    </div>
+                    <div class="control-item">
+                        <span class="key-badge">C / L</span> 알까기 (Nutmeg - 수비 사이 돌파)
+                    </div>
+                    <div class="control-item">
+                        <span class="key-badge">자동 슈팅</span> 골대 근처 도달 시
+                    </div>
+                </div>
+
+                <button id="start-btn" class="btn-primary">게임 시작</button>
+            </div>
+
+            <!-- Game Over / Stage Clear Screen -->
+            <div id="result-screen" class="overlay-screen" style="display: none;">
+                <h1 id="result-title">GOAL! STAGE CLEAR</h1>
+                <p id="result-desc">환상적인 팬텀 드리블로 수비수를 완벽히 제쳤습니다!</p>
+                <div style="font-size: 28px; font-weight: 800; color: #facc15; margin-bottom: 24px;">
+                    최종 점수: <span id="final-score">0</span>
+                </div>
+                <button id="restart-btn" class="btn-primary">다음 스테이지</button>
+            </div>
+        </div>
     </div>
 
-    <div id="result-msg">SWISH!</div>
-    <div id="slow-badge" class="slow-mo-badge">🎬 SLOW MOTION DUNK</div>
-
     <script>
-        // --- 퀴즈 데이터 ---
-        const quizData = [
-            { ch: "1장. 컵라면과 플랜테이션", q: "열대우림과 오랑우탄 서식지를 파괴하는 컵라면용 기름은?", opts: ["올리브유", "팜유", "카놀라유", "들기름"], ans: 1 },
-            { ch: "2장. 바나나와 생물다양성", q: "단일 품종(캐번디시)만 연속 재배할 때 생기는 큰 위험은?", opts: ["크기 감소", "씨앗 발생", "전염병으로 멸종 위기", "나무 과다 성장"], ans: 2 },
-            { ch: "3장. 아보카도와 로컬 푸드", q: "아보카도 대량 재배 시 현지 주민을 위협하는 자원 고갈은?", opts: ["석유", "물(수자원)", "천연가스", "햇빛"], ans: 1 },
-            { ch: "4장. 생수병과 플라스틱", q: "바다로 흘러가 잘게 부서진 5mm 미만의 플라스틱은?", opts: ["바이오 플라스틱", "미세 플라스틱", "합성고무", "나노 유리"], ans: 1 },
-            { ch: "5장. 휴대폰과 전자 쓰레기", q: "선진국의 전자 쓰레기가 주로 유입되어 환경을 파괴하는 곳은?", opts: ["선진국 연구소", "남극", "개발도상국", "우주 정거장"], ans: 2 },
-            { ch: "6장. 패스트 패션", q: "패스트 패션이 일으키는 문제가 아닌 것은?", opts: ["노동자 저임금", "수질 오염", "미세 플라스틱", "자원 순환율 급증"], ans: 3 },
-            { ch: "7장. 화학물질의 역습", q: "유해 화학물질 위험을 막기 위해 가장 필요한 사회적 대응은?", opts: ["기업·국가의 규제", "소비 전면 중단", "가격 10배 인상", "가내 수공업"], ans: 0 },
-            { ch: "8장. 롱패딩과 동물권", q: "동물을 인간의 도구가 아닌 생명으로 존중해야 한다는 개념은?", opts: ["동물권", "동물 복제", "동물 사육권", "생물다양성"], ans: 0 }
-        ];
-
-        let currentQ = 0;
-
-        // --- 3D 씬 설정 ---
-        const container = document.getElementById('canvas-container');
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x111122);
-
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 5, 12);
-
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        container.appendChild(renderer.domElement);
-
-        // 조명
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-        scene.add(ambientLight);
-
-        const spotLight = new THREE.SpotLight(0xffffff, 1);
-        spotLight.position.set(0, 15, 10);
-        spotLight.castShadow = true;
-        scene.add(spotLight);
-
-        // 코트 및 백보드 제작
-        const floorGeo = new THREE.PlaneGeometry(20, 20);
-        const floorMat = new THREE.MeshStandardMaterial({ color: 0xd2b48c });
-        const floor = new THREE.Mesh(floorGeo, floorMat);
-        floor.rotation.x = -Math.PI / 2;
-        floor.receiveShadow = true;
-        scene.add(floor);
-
-        // 림(골대)
-        const hoopGroup = new THREE.Group();
-        hoopGroup.position.set(0, 4, -4);
-        
-        const rimGeo = new THREE.TorusGeometry(0.6, 0.05, 16, 100);
-        const rimMat = new THREE.MeshStandardMaterial({ color: 0xff4500 });
-        const rim = new THREE.Mesh(rimGeo, rimMat);
-        rim.rotation.x = Math.PI / 2;
-        hoopGroup.add(rim);
-
-        const boardGeo = new THREE.BoxGeometry(2.5, 1.8, 0.1);
-        const boardMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
-        const board = new THREE.Mesh(boardGeo, boardMat);
-        board.position.set(0, 0.8, -0.6);
-        hoopGroup.add(board);
-        scene.add(hoopGroup);
-
-        // 사람 캐릭터 제작 (Humanoid Player)
-        const player = new THREE.Group();
-        
-        // 피부/유니폼 재질
-        const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac });
-        const kitMat = new THREE.MeshStandardMaterial({ color: 0x1e88e5 });
-
-        // 머리
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 16), skinMat);
-        head.position.y = 1.7;
-        player.add(head);
-
-        // 몸통
-        const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.2, 0.8, 16), kitMat);
-        torso.position.y = 1.1;
-        player.add(torso);
-
-        // 팔 (오른팔)
-        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.7), kitMat);
-        arm.position.set(0.35, 1.2, 0);
-        arm.rotation.z = -Math.PI / 4;
-        player.add(arm);
-
-        // 다리
-        const legLeft = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.8), skinMat);
-        legLeft.position.set(-0.15, 0.4, 0);
-        const legRight = legLeft.clone();
-        legRight.position.x = 0.15;
-        player.add(legLeft);
-        player.add(legRight);
-
-        player.position.set(0, 0, 3);
-        scene.add(player);
-
-        // 농구공
-        const ballGeo = new THREE.SphereGeometry(0.3, 32, 32);
-        const ballMat = new THREE.MeshStandardMaterial({ color: 0xff6600 });
-        const ball = new THREE.Mesh(ballGeo, ballMat);
-        ball.castShadow = true;
-        scene.add(ball);
-
-        // 애니메이션 변수
-        let isAnimating = false;
-        let animProgress = 0;
-        let isCorrectAnim = false;
-        let timeScale = 1.0; // 슬로우 모션 제어용
-
-        function resetPositions() {
-            player.position.set(0, 0, 3);
-            player.rotation.set(0, 0, 0);
-            arm.rotation.set(0, 0, -Math.PI / 4);
-            ball.position.set(0.35, 1.2, 2.6);
-            camera.position.set(0, 5, 12);
-            camera.lookAt(0, 2, 0);
-            document.getElementById('slow-badge').style.display = 'none';
-            document.getElementById('result-msg').style.opacity = '0';
-        }
-        resetPositions();
-
-        // --- 퀴즈 UI 업데이트 ---
-        function loadQuiz() {
-            resetPositions();
-            const q = quizData[currentQ];
-            document.getElementById('chapter').innerText = q.ch;
-            document.getElementById('question').innerText = q.q;
-            
-            const optsContainer = document.getElementById('options');
-            optsContainer.innerHTML = '';
-            
-            q.opts.forEach((opt, idx) => {
-                const btn = document.createElement('button');
-                btn.className = 'btn';
-                btn.innerText = `${idx + 1}. ${opt}`;
-                btn.onclick = () => selectAnswer(idx);
-                optsContainer.appendChild(btn);
-            });
-            document.getElementById('ui-container').style.opacity = '1';
-        }
-
-        // --- 정답 선택 및 애니메이션 트리거 ---
-        function selectAnswer(idx) {
-            if (isAnimating) return;
-            
-            const isCorrect = (idx === quizData[currentQ].ans);
-            document.getElementById('ui-container').style.opacity = '0'; // UI 숨기기
-            
-            isAnimating = true;
-            animProgress = 0;
-            isCorrectAnim = isCorrect;
-
-            if (isCorrect) {
-                timeScale = 0.25; // 정답일 경우 슬로우 모션 적용!
-                document.getElementById('slow-badge').style.display = 'block';
-            } else {
-                timeScale = 1.0; // 오답은 일반 속도
+        // --- Sound Effects Synthesizer (Web Audio API) ---
+        class SoundFX {
+            constructor() {
+                this.ctx = null;
             }
-        }
 
-        // --- 루프 및 슛 애니메이션 ---
-        function animate() {
-            requestAnimationFrame(animate);
-
-            if (isAnimating) {
-                animProgress += 0.015 * (timeScale / 1.0);
-
-                if (isCorrectAnim) {
-                    // [정답] 화려한 슬로우 모션 덩크슛 연출
-                    if (animProgress < 0.4) {
-                        // 돌진 및 점프
-                        const t = animProgress / 0.4;
-                        player.position.z = THREE.MathUtils.lerp(3, 0.5, t);
-                        player.position.y = Math.sin(t * Math.PI) * 2.5;
-                        
-                        // 팔을 뒤로 젖힘
-                        arm.rotation.x = -t * Math.PI;
-                        ball.position.copy(player.position).add(new THREE.Vector3(0.2, 1.2, -0.2));
-
-                        // 카메라 줌인 연출
-                        camera.position.set(3, 3, 5);
-                        camera.lookAt(player.position);
-                    } 
-                    else if (animProgress < 0.7) {
-                        // 림으로 꽂아내리기 (덩크!)
-                        const t = (animProgress - 0.4) / 0.3;
-                        player.position.set(0, 2.5 - t * 0.5, -3.2);
-                        arm.rotation.x = 0;
-                        
-                        ball.position.set(0, 4.2 - t * 1.5, -4);
-
-                        camera.position.set(-3, 2, -1);
-                        camera.lookAt(0, 4, -4);
-
-                        if (t > 0.5) {
-                            const msg = document.getElementById('result-msg');
-                            msg.innerText = "💥 SLAM DUNK!!";
-                            msg.style.color = "#ffeb3b";
-                            msg.style.opacity = '1';
-                        }
-                    } 
-                    else if (animProgress < 1.0) {
-                        // 착지 및 골망 통과
-                        const t = (animProgress - 0.7) / 0.3;
-                        player.position.y = THREE.MathUtils.lerp(2, 0, t);
-                        ball.position.y = THREE.MathUtils.lerp(2.7, 0.3, t);
-                    } 
-                    else {
-                        // 애니메이션 종료 후 다음 문제로
-                        finishTurn();
-                    }
-                } else {
-                    // [오답] 노골 (에어볼/림 맞고 튕겨나감)
-                    if (animProgress < 0.5) {
-                        const t = animProgress / 0.5;
-                        // 제자리 점프 슛
-                        player.position.y = Math.sin(t * Math.PI) * 1.2;
-                        ball.position.lerpVectors(new THREE.Vector3(0.35, 1.2, 2.6), new THREE.Vector3(0, 4.5, -2), t);
-                    } else if (animProgress < 1.0) {
-                        const t = (animProgress - 0.5) / 0.5;
-                        // 빗나감
-                        ball.position.set(1.5 * t, 4.5 - t * 4, -2 - t * 2);
-                        player.position.y = Math.max(0, 1.2 - t * 2);
-
-                        const msg = document.getElementById('result-msg');
-                        msg.innerText = "AIR BALL... ❌";
-                        msg.style.color = "#f44336";
-                        msg.style.opacity = '1';
-                    } else {
-                        finishTurn();
-                    }
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
                 }
             }
 
-            renderer.render(scene, camera);
+            playKick() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(120, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.12);
+                gain.gain.setValueAtTime(0.8, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.12);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.12);
+            }
+
+            playWhistle() {
+                if (!this.ctx) return;
+                const osc1 = this.ctx.createOscillator();
+                const osc2 = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                osc1.type = 'sine';
+                osc2.type = 'sine';
+                osc1.frequency.setValueAtTime(2600, this.ctx.currentTime);
+                osc2.frequency.setValueAtTime(2850, this.ctx.currentTime);
+
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
+
+                osc1.connect(gain);
+                osc2.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc1.start();
+                osc2.start();
+                osc1.stop(this.ctx.currentTime + 0.4);
+                osc2.stop(this.ctx.currentTime + 0.4);
+            }
+
+            playTrickSound() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.25);
+                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.25);
+            }
+
+            playCheer() {
+                if (!this.ctx) return;
+                const bufferSize = this.ctx.sampleRate * 1.5;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const output = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    output[i] = Math.random() * 2 - 1;
+                }
+                const whiteNoise = this.ctx.createBufferSource();
+                whiteNoise.buffer = buffer;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(1000, this.ctx.currentTime);
+                filter.Q.setValueAtTime(1.5, this.ctx.currentTime);
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.01, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.5, this.ctx.currentTime + 0.2);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 1.5);
+
+                whiteNoise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                whiteNoise.start();
+                whiteNoise.stop(this.ctx.currentTime + 1.5);
+            }
         }
 
-        function finishTurn() {
-            isAnimating = false;
-            currentQ = (currentQ + 1) % quizData.length;
-            loadQuiz();
+        const sfx = new SoundFX();
+
+        // --- Game Setup & Variables ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            const wrapper = document.getElementById('canvas-wrapper');
+            canvas.width = wrapper.clientWidth;
+            canvas.height = wrapper.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        let gameState = 'START'; // START, PLAYING, GAMEOVER, CLEAR
+        let stage = 1;
+        let score = 0;
+        let timeLeft = 45;
+        let timerInterval = null;
+
+        let keys = {};
+        let touchDir = { x: 0, y: 0 };
+
+        // DOM elements
+        const stageVal = document.getElementById('stage-val');
+        const scoreVal = document.getElementById('score-val');
+        const timeVal = document.getElementById('time-val');
+        const staminaBar = document.getElementById('stamina-bar');
+        const trickBanner = document.getElementById('trick-banner');
+        const startScreen = document.getElementById('start-screen');
+        const resultScreen = document.getElementById('result-screen');
+        const resultTitle = document.getElementById('result-title');
+        const resultDesc = document.getElementById('result-desc');
+        const finalScore = document.getElementById('final-score');
+        const startBtn = document.getElementById('start-btn');
+        const restartBtn = document.getElementById('restart-btn');
+
+        // --- Entity Classes ---
+
+        class Player {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 16;
+                this.speed = 3.8;
+                this.angle = -Math.PI / 2;
+                this.stamina = 100;
+                this.maxStamina = 100;
+                this.isDashing = false;
+
+                // Skill state
+                this.activeSkill = null; // 'crossover', 'spin', 'nutmeg'
+                this.skillTimer = 0;
+                this.invulnerable = false;
+
+                // Ball position offset relative to player
+                this.ballX = x;
+                this.ballY = y - 18;
+            }
+
+            reset(x, y) {
+                this.x = x;
+                this.y = y;
+                this.ballX = x;
+                this.ballY = y - 18;
+                this.stamina = 100;
+                this.activeSkill = null;
+                this.skillTimer = 0;
+                this.invulnerable = false;
+            }
+
+            update(dx, dy) {
+                if (this.skillTimer > 0) {
+                    this.skillTimer--;
+                    if (this.skillTimer === 0) {
+                        this.activeSkill = null;
+                        this.invulnerable = false;
+                    }
+                }
+
+                // Calculate Speed & Stamina
+                let currentSpeed = this.speed;
+                if (this.isDashing && this.stamina > 2) {
+                    currentSpeed *= 1.7;
+                    this.stamina = Math.max(0, this.stamina - 1.2);
+                } else {
+                    this.stamina = Math.min(this.maxStamina, this.stamina + 0.3);
+                }
+
+                if (this.activeSkill === 'spin') {
+                    currentSpeed *= 1.3;
+                    this.angle += 0.35; // 360 spin effect
+                } else if (this.activeSkill === 'crossover') {
+                    currentSpeed *= 1.4;
+                } else if (dx !== 0 || dy !== 0) {
+                    this.angle = Math.atan2(dy, dx);
+                }
+
+                // Move Player
+                this.x += dx * currentSpeed;
+                this.y += dy * currentSpeed;
+
+                // Keep inside pitch boundaries
+                const padding = 25;
+                this.x = Math.max(padding, Math.min(canvas.width - padding, this.x));
+                this.y = Math.max(padding, Math.min(canvas.height - padding, this.y));
+
+                // Ball Follow Logic (Dribble Physics)
+                const targetBallX = this.x + Math.cos(this.angle) * 16;
+                const targetBallY = this.y + Math.sin(this.angle) * 16;
+
+                // Smooth ball movement
+                this.ballX += (targetBallX - this.ballX) * 0.35;
+                this.ballY += (targetBallY - this.ballY) * 0.35;
+            }
+
+            triggerSkill(skillName) {
+                if (this.activeSkill !== null || this.stamina < 20) return false;
+
+                this.activeSkill = skillName;
+                this.stamina -= 20;
+
+                if (skillName === 'crossover') {
+                    this.skillTimer = 22;
+                    this.invulnerable = true;
+                    showTrick("CROSSOVER! ⚡");
+                } else if (skillName === 'spin') {
+                    this.skillTimer = 28;
+                    this.invulnerable = true;
+                    showTrick("MARSEILLE TURN! 🌀");
+                } else if (skillName === 'nutmeg') {
+                    this.skillTimer = 18;
+                    this.invulnerable = true;
+                    showTrick("NUTMEG! ⚽💨");
+                }
+
+                sfx.playTrickSound();
+                return true;
+            }
+
+            draw() {
+                ctx.save();
+
+                // Player Shadow
+                ctx.beginPath();
+                ctx.ellipse(this.x, this.y + 12, 14, 6, 0, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.fill();
+
+                // Invulnerability / Skill aura
+                if (this.invulnerable) {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius + 8, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(56, 189, 248, 0.35)';
+                    ctx.fill();
+                    ctx.strokeStyle = '#38bdf8';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+
+                // Player Body
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+
+                // Shoulders / Jersey (Blue Kit)
+                ctx.fillStyle = '#2563eb';
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#60a5fa';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                // Head
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius * 0.55, 0, Math.PI * 2);
+                ctx.fillStyle = '#fbcfe8';
+                ctx.fill();
+
+                // Direction Marker (Boots)
+                ctx.fillStyle = '#facc15';
+                ctx.fillRect(8, -8, 6, 4);
+                ctx.fillRect(8, 4, 6, 4);
+
+                ctx.restore();
+
+                // Draw Ball
+                this.drawBall();
+            }
+
+            drawBall() {
+                ctx.save();
+                // Ball Shadow
+                ctx.beginPath();
+                ctx.ellipse(this.ballX, this.ballY + 6, 8, 4, 0, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0,0,0,0.4)';
+                ctx.fill();
+
+                // Ball
+                ctx.beginPath();
+                ctx.arc(this.ballX, this.ballY, 7, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+                ctx.strokeStyle = '#0f172a';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                // Pattern on ball
+                ctx.beginPath();
+                ctx.arc(this.ballX, this.ballY, 3, 0, Math.PI * 2);
+                ctx.fillStyle = '#0f172a';
+                ctx.fill();
+
+                ctx.restore();
+            }
         }
 
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+        class Defender {
+            constructor(x, y, level) {
+                this.x = x;
+                this.y = y;
+                this.originX = x;
+                this.originY = y;
+                this.radius = 16;
+                this.speed = 2.0 + level * 0.3;
+                this.angle = Math.PI / 2;
+
+                // State
+                this.state = 'IDLE'; // IDLE, DEFENDING, STUNNED, TACKLE
+                this.stunTimer = 0;
+                this.leanDir = 1; // 1 = Right, -1 = Left (Indicates defender stance)
+                this.leanChangeTimer = 0;
+            }
+
+            update(player) {
+                if (this.stunTimer > 0) {
+                    this.stunTimer--;
+                    this.state = 'STUNNED';
+                    return;
+                }
+
+                const distToPlayer = Math.hypot(player.x - this.x, player.y - this.y);
+
+                // Change defensive stance randomly to give player cues
+                this.leanChangeTimer++;
+                if (this.leanChangeTimer > 60) {
+                    this.leanDir = Math.random() < 0.5 ? 1 : -1;
+                    this.leanChangeTimer = 0;
+                }
+
+                // AI Logic: Track player if close
+                if (distToPlayer < 240) {
+                    this.state = 'DEFENDING';
+                    this.angle = Math.atan2(player.y - this.y, player.x - this.x);
+
+                    // Move towards player with tactical positioning
+                    let targetX = player.x;
+                    let targetY = player.y + 20; // Try to stay between player and goal
+
+                    const moveAngle = Math.atan2(targetY - this.y, targetX - this.x);
+                    this.x += Math.cos(moveAngle) * this.speed;
+                    this.y += Math.sin(moveAngle) * this.speed;
+
+                    // Tackle condition check
+                    if (distToPlayer < 32 && !player.invulnerable) {
+                        // Check if player used correct skill or got tackled
+                        return 'TACKLE';
+                    } else if (distToPlayer < 45 && player.invulnerable) {
+                        // Player successfully bypassed defender using skill!
+                        this.stunTimer = 60; // 1초간 앵클 브레이크 스턴
+                        addScore(player.activeSkill === 'crossover' ? 200 : 300);
+                        if (player.activeSkill === 'crossover') {
+                            showTrick("ANKLE BREAKER! 💥");
+                        }
+                    }
+                } else {
+                    this.state = 'IDLE';
+                    // Return to home position slowly
+                    const homeAngle = Math.atan2(this.originY - this.y, this.originX - this.x);
+                    if (Math.hypot(this.originX - this.x, this.originY - this.y) > 10) {
+                        this.x += Math.cos(homeAngle) * (this.speed * 0.5);
+                        this.y += Math.sin(homeAngle) * (this.speed * 0.5);
+                    }
+                }
+
+                return null;
+            }
+
+            draw() {
+                ctx.save();
+
+                // Shadow
+                ctx.beginPath();
+                ctx.ellipse(this.x, this.y + 12, 14, 6, 0, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.fill();
+
+                // Defense Zone / Vision Cone
+                if (this.state === 'DEFENDING' && this.stunTimer === 0) {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, 40, this.angle - 0.6, this.angle + 0.6);
+                    ctx.lineTo(this.x, this.y);
+                    ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+                    ctx.stroke();
+                }
+
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+
+                // Body (Red Kit)
+                ctx.fillStyle = this.state === 'STUNNED' ? '#64748b' : '#dc2626';
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#f87171';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                // Head
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius * 0.55, 0, Math.PI * 2);
+                ctx.fillStyle = '#fde047';
+                ctx.fill();
+
+                // Stance indicator (Leaning shoulders)
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(6, 6 * this.leanDir, 5, 4);
+
+                ctx.restore();
+
+                // Stun effect icon
+                if (this.state === 'STUNNED') {
+                    ctx.fillStyle = '#facc15';
+                    ctx.font = '900 18px sans-serif';
+                    ctx.fillText('💫', this.x - 8, this.y - 24);
+                }
+            }
+        }
+
+        // Initialize Entities
+        let player = new Player(450, 560);
+        let defenders = [];
+
+        function setupStage(lvl) {
+            player.reset(canvas.width / 2, canvas.height - 80);
+            defenders = [];
+
+            if (lvl === 1) {
+                defenders.push(new Defender(canvas.width / 2, 300, lvl));
+            } else if (lvl === 2) {
+                defenders.push(new Defender(canvas.width / 2 - 120, 320, lvl));
+                defenders.push(new Defender(canvas.width / 2 + 120, 320, lvl));
+            } else {
+                defenders.push(new Defender(canvas.width / 2, 360, lvl));
+                defenders.push(new Defender(canvas.width / 2 - 140, 240, lvl));
+                defenders.push(new Defender(canvas.width / 2 + 140, 240, lvl));
+            }
+
+            timeLeft = 45;
+            timeVal.innerText = `${timeLeft}s`;
+            stageVal.innerText = lvl;
+
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (gameState === 'PLAYING') {
+                    timeLeft--;
+                    timeVal.innerText = `${timeLeft}s`;
+                    if (timeLeft <= 0) {
+                        endGame(false, "시간 초과! 수비 압박을 견디지 못했습니다.");
+                    }
+                }
+            }, 1000);
+        }
+
+        // --- Helper Functions ---
+
+        function addScore(pts) {
+            score += pts;
+            scoreVal.innerText = score;
+        }
+
+        function showTrick(text) {
+            trickBanner.innerText = text;
+            trickBanner.classList.add('show');
+            setTimeout(() => {
+                trickBanner.classList.remove('show');
+            }, 1200);
+        }
+
+        // --- Drawing Field Graphics ---
+
+        function drawPitch() {
+            // Grass background gradient
+            const bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            bgGrad.addColorStop(0, '#15803d');
+            bgGrad.addColorStop(1, '#166534');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Grass Stripes
+            const stripeHeight = 50;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+            for (let y = 0; y < canvas.height; y += stripeHeight * 2) {
+                ctx.fillRect(0, y, canvas.width, stripeHeight);
+            }
+
+            // Pitch Markings
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.lineWidth = 3;
+
+            // Penalty Area (Top - Goal Zone)
+            const boxWidth = 320;
+            const boxHeight = 130;
+            const boxX = (canvas.width - boxWidth) / 2;
+            ctx.strokeRect(boxX, 0, boxWidth, boxHeight);
+
+            // Goal Post
+            const goalWidth = 160;
+            const goalX = (canvas.width - goalWidth) / 2;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+            ctx.fillRect(goalX, 0, goalWidth, 12);
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 5;
+            ctx.strokeRect(goalX, -5, goalWidth, 15);
+
+            // Center Circle
+            ctx.beginPath();
+            ctx.arc(canvas.width / 2, canvas.height / 2 + 100, 70, 0, Math.PI * 2);
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // Shooting Arc Indicator
+            ctx.setLineDash([8, 8]);
+            ctx.strokeStyle = '#facc15';
+            ctx.beginPath();
+            ctx.arc(canvas.width / 2, 0, 160, 0, Math.PI);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        // --- Core Loop & Input ---
+
+        function update() {
+            if (gameState !== 'PLAYING') return;
+
+            // Movement Input Processing
+            let dx = 0;
+            let dy = 0;
+
+            if (keys['ArrowLeft'] || keys['KeyA']) dx -= 1;
+            if (keys['ArrowRight'] || keys['KeyD']) dx += 1;
+            if (keys['ArrowUp'] || keys['KeyW']) dy -= 1;
+            if (keys['ArrowDown'] || keys['KeyS']) dy += 1;
+
+            // Combine keyboard and touch joystick
+            if (touchDir.x !== 0 || touchDir.y !== 0) {
+                dx = touchDir.x;
+                dy = touchDir.y;
+            }
+
+            // Normalize diagonal speed
+            if (dx !== 0 && dy !== 0 && touchDir.x === 0) {
+                dx *= 0.7071;
+                dy *= 0.7071;
+            }
+
+            player.isDashing = (keys['ShiftLeft'] || keys['ShiftRight'] || keys['Space'] || touchDash);
+            player.update(dx, dy);
+
+            // Update UI Stamina
+            staminaBar.style.width = `${(player.stamina / player.maxStamina) * 100}%`;
+
+            // Update Defenders & Collision Checks
+            for (let def of defenders) {
+                const res = def.update(player);
+                if (res === 'TACKLE') {
+                    sfx.playWhistle();
+                    endGame(false, "수비수에게 공을 빼앗겼습니다! 더 빠른 스킬로 제쳐보세요.");
+                    return;
+                }
+            }
+
+            // Check Goal / Shooting Zone (Top Goal)
+            const distToGoal = Math.hypot(player.x - canvas.width / 2, player.y - 0);
+            if (distToGoal < 120 && player.y < 120) {
+                // Goal Scored!
+                sfx.playCheer();
+                addScore(500 + timeLeft * 10);
+                endGame(true, `골!! 멋진 드리블로 수비망을 뚫고 득점했습니다! (+${500 + timeLeft * 10}점)`);
+            }
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawPitch();
+
+            // Render Entities
+            for (let def of defenders) {
+                def.draw();
+            }
+            player.draw();
+        }
+
+        function gameLoop() {
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function startGame() {
+            sfx.init();
+            sfx.playWhistle();
+            stage = 1;
+            score = 0;
+            scoreVal.innerText = '0';
+            setupStage(stage);
+            gameState = 'PLAYING';
+            startScreen.style.display = 'none';
+            resultScreen.style.display = 'none';
+        }
+
+        function endGame(isClear, msg) {
+            gameState = isClear ? 'CLEAR' : 'GAMEOVER';
+            clearInterval(timerInterval);
+
+            setTimeout(() => {
+                resultTitle.innerText = isClear ? "GOAL!! STAGE CLEAR" : "TAKLLED! GAME OVER";
+                resultTitle.style.background = isClear ? 
+                    "linear-gradient(135deg, #4ade80, #3b82f6)" : 
+                    "linear-gradient(135deg, #f87171, #ef4444)";
+                resultTitle.style.webkitBackgroundClip = "text";
+
+                resultDesc.innerText = msg;
+                finalScore.innerText = score;
+
+                restartBtn.innerText = isClear ? "다음 스테이지 ▶" : "다시 시도 🔄";
+                resultScreen.style.display = 'flex';
+            }, 300);
+        }
+
+        // --- Event Listeners ---
+
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+
+            if (gameState === 'PLAYING') {
+                if (e.code === 'KeyZ' || e.code === 'KeyJ') {
+                    player.triggerSkill('crossover');
+                } else if (e.code === 'KeyX' || e.code === 'KeyK') {
+                    player.triggerSkill('spin');
+                } else if (e.code === 'KeyC' || e.code === 'KeyL') {
+                    player.triggerSkill('nutmeg');
+                }
+            }
         });
 
-        // 시작
-        loadQuiz();
-        animate();
+        window.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+        startBtn.addEventListener('click', startGame);
+
+        restartBtn.addEventListener('click', () => {
+            sfx.playWhistle();
+            if (gameState === 'CLEAR') {
+                stage++;
+                setupStage(stage);
+                gameState = 'PLAYING';
+                resultScreen.style.display = 'none';
+            } else {
+                startGame();
+            }
+        });
+
+        // Touch Control Listeners (Mobile / Tablet)
+        let touchDash = false;
+        document.getElementById('btn-crossover').addEventListener('touchstart', (e) => { e.preventDefault(); player.triggerSkill('crossover'); });
+        document.getElementById('btn-spin').addEventListener('touchstart', (e) => { e.preventDefault(); player.triggerSkill('spin'); });
+        document.getElementById('btn-nutmeg').addEventListener('touchstart', (e) => { e.preventDefault(); player.triggerSkill('nutmeg'); });
+        
+        const btnDash = document.getElementById('btn-dash');
+        btnDash.addEventListener('touchstart', (e) => { e.preventDefault(); touchDash = true; });
+        btnDash.addEventListener('touchend', (e) => { e.preventDefault(); touchDash = false; });
+
+        // Touch Joystick Implementation
+        const joystickZone = document.getElementById('joystick-zone');
+        const joystickKnob = document.getElementById('joystick-knob');
+        let joystickActive = false;
+
+        joystickZone.addEventListener('touchstart', (e) => {
+            joystickActive = true;
+            handleJoystick(e.touches[0]);
+        });
+
+        joystickZone.addEventListener('touchmove', (e) => {
+            if (joystickActive) {
+                handleJoystick(e.touches[0]);
+            }
+        });
+
+        joystickZone.addEventListener('touchend', () => {
+            joystickActive = false;
+            touchDir = { x: 0, y: 0 };
+            joystickKnob.style.top = '35px';
+            joystickKnob.style.left = '35px';
+        });
+
+        function handleJoystick(touch) {
+            const rect = joystickZone.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            let deltaX = touch.clientX - centerX;
+            let deltaY = touch.clientY - centerY;
+            const dist = Math.hypot(deltaX, deltaY);
+            const maxDist = 40;
+
+            if (dist > maxDist) {
+                deltaX = (deltaX / dist) * maxDist;
+                deltaY = (deltaY / dist) * maxDist;
+            }
+
+            joystickKnob.style.left = `${35 + deltaX}px`;
+            joystickKnob.style.top = `${35 + deltaY}px`;
+
+            touchDir.x = deltaX / maxDist;
+            touchDir.y = deltaY / maxDist;
+        }
+
+        // Start animation loop
+        requestAnimationFrame(gameLoop);
     </script>
 </body>
 </html>
+```eof
+
+요청하신 **축구 1v1 드리블 게임 웹 애플리케이션** 생성을 완료했습니다.
+
+### 주요 기능 요약:
+1. **드리블 스킬 매커니즘**:
+   - `Z` / `J` / 화면 버튼: **크로스오버 (팬텀 드리블)**
+   - `X` / `K` / 화면 버튼: **마르세유 턴 (360도 루렛)**
+   - `C` / `L` / 화면 버튼: **알까기 (Nutmeg)**
+   - `Shift` / `Space`: **스피드 대시**
+2. **수비수 AI 시스템**:
+   - 플레이어의 접근을 감지해 압박 및 태클을 시도합니다.
+   - 수비수의 태클 타이밍에 맞춰 스킬을 사용하면 **'앵클 브레이크(Ankle Breaker)'**와 함께 수비수를 스턴 상태에 빠뜨릴 수 있습니다.
+3. **난이도 및 멀티 스테이지**:
+   - 스테이지가 올라갈수록 수비수의 수와 속도가 증가합니다.
+4. **모바일 및 PC 호환**:
+   - 키보드 제어 및 터치스크린 조이스틱/버튼 컨트롤을 지원합니다.
